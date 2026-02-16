@@ -18,6 +18,8 @@ interface InputPanelProps {
   onCalculate: () => void;
   onReset: () => void;
   calculating: boolean;
+  onGoldPriceChange: (v: number) => void;
+  onSilverPriceChange: (v: number) => void;
 }
 
 const InputPanel = ({
@@ -34,6 +36,8 @@ const InputPanel = ({
   pricesLoading,
   onCalculate,
   onReset,
+  onGoldPriceChange,
+  onSilverPriceChange,
   calculating,
 }: InputPanelProps) => {
   return (
@@ -143,6 +147,44 @@ const InputPanel = ({
           </div>
         </div>
       )}
+
+      {/* Manual Price Override */}
+      <div className="space-y-3">
+        <p className="section-label">💲 Metal Prices (PKR/gram)</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground/80">Gold Price</label>
+            <input
+              type="number"
+              min={0}
+              value={goldPrice || ""}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                onGoldPriceChange(isNaN(val) || val < 0 ? 0 : val);
+              }}
+              placeholder="0"
+              className="glass-input"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground/80">Silver Price</label>
+            <input
+              type="number"
+              min={0}
+              value={silverPrice || ""}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                onSilverPriceChange(isNaN(val) || val < 0 ? 0 : val);
+              }}
+              placeholder="0"
+              className="glass-input"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-primary/70">
+          {pricesLoading ? "⏳ Fetching live prices..." : "✅ Prices loaded (you can override manually)"}
+        </p>
+      </div>
 
       {/* Nisab Basis */}
       <div className="space-y-2">
