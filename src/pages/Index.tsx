@@ -141,6 +141,8 @@ const Index = () => {
             onCalculate={handleCalculate}
             onReset={handleReset}
             calculating={calculating}
+            onGoldPriceChange={setGoldPrice}
+            onSilverPriceChange={setSilverPrice}
           />
 
           <div className="space-y-6 lg:sticky lg:top-8">
