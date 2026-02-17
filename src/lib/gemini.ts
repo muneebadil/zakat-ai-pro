@@ -25,9 +25,9 @@ export interface MetalPrices {
 
 const TROY_OUNCE_IN_GRAMS = 31.1035;
 
-export async function fetchMetalPrices(): Promise<MetalPrices> {
+async function fetchFromGoldPriceOrg(): Promise<MetalPrices> {
   const res = await fetch("https://data-asg.goldprice.org/dbXRates/PKR");
-  if (!res.ok) throw new Error("Metal price API failed");
+  if (!res.ok) throw new Error("goldprice.org API failed");
 
   const data = await res.json();
   const item = data?.items?.[0];
@@ -39,6 +39,51 @@ export async function fetchMetalPrices(): Promise<MetalPrices> {
     gold: item.xauPrice / TROY_OUNCE_IN_GRAMS,
     silver: item.xagPrice / TROY_OUNCE_IN_GRAMS,
   };
+}
+
+async function fetchFromExchangeRate(): Promise<MetalPrices> {
+  const rateRes = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
+  if (!rateRes.ok) throw new Error("Exchange rate API failed");
+  const rateData = await rateRes.json();
+  const pkrRate = rateData.rates?.PKR;
+  if (!pkrRate) throw new Error("PKR rate not found");
+
+  // Approximate international spot prices per gram in USD
+  const goldUsdPerGram = 88;
+  const silverUsdPerGram = 1.05;
+
+  return {
+    gold: Math.round(goldUsdPerGram * pkrRate),
+    silver: Math.round(silverUsdPerGram * pkrRate),
+  };
+}
+
+export async function fetchMetalPrices(): Promise<MetalPrices> {
+  // Strategy 1: goldprice.org (most accurate, per troy ounce in PKR)
+  try {
+    const prices = await fetchFromGoldPriceOrg();
+    if (prices.gold > 0 && prices.silver > 0) {
+      console.log("✅ Prices loaded from goldprice.org", prices);
+      return prices;
+    }
+  } catch (e) {
+    console.warn("goldprice.org failed, trying fallback...", e);
+  }
+
+  // Strategy 2: Exchange rate API + approximate spot prices
+  try {
+    const prices = await fetchFromExchangeRate();
+    if (prices.gold > 0 && prices.silver > 0) {
+      console.log("✅ Prices loaded from exchange rate fallback", prices);
+      return prices;
+    }
+  } catch (e) {
+    console.warn("Exchange rate fallback also failed", e);
+  }
+
+  // Strategy 3: Hardcoded fallback (approximate PKR per gram)
+  console.warn("Using hardcoded fallback prices");
+  return { gold: 43670, silver: 652 };
 }
 
 export async function fetchZakatExplanation(
