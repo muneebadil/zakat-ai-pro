@@ -36,7 +36,6 @@ const Index = () => {
   const [goldPrice, setGoldPrice] = useState(0);
   const [silverPrice, setSilverPrice] = useState(0);
   const [pricesLoading, setPricesLoading] = useState(true);
-  const [priceError, setPriceError] = useState(false);
   const [result, setResult] = useState<ZakatResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [explanation, setExplanation] = useState("");
@@ -63,17 +62,15 @@ const Index = () => {
   // Fetch metal prices on mount
   useEffect(() => {
     setPricesLoading(true);
-    setPriceError(false);
     fetchMetalPrices()
       .then(({ gold, silver }) => {
         setGoldPrice(gold);
         setSilverPrice(silver);
       })
       .catch(() => {
-        setPriceError(true);
         toast({
           title: "Price Fetch Failed",
-          description: "Unable to fetch live metal prices. Please refresh.",
+          description: "Using approximate prices. You can refresh to retry.",
           variant: "destructive",
         });
       })
@@ -89,8 +86,6 @@ const Index = () => {
   }, []);
 
   const handleCalculate = useCallback(() => {
-    if (priceError) return;
-
     setCalculating(true);
     setExplanation("");
 
@@ -102,7 +97,7 @@ const Index = () => {
       setResult(res);
       setCalculating(false);
     }, 400);
-  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis, priceError]);
+  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis]);
 
   const handleReset = useCallback(() => {
     setPersonalInputs(defaultPersonal);
@@ -168,7 +163,7 @@ const Index = () => {
             silverDisplay={silverDisplay}
             onGoldDisplayChange={setGoldDisplay}
             onSilverDisplayChange={setSilverDisplay}
-            priceError={priceError}
+            priceError={false}
           />
 
           <div className="space-y-6 lg:sticky lg:top-8">
