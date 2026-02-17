@@ -44,6 +44,7 @@ export interface ZakatResult {
 export const GOLD_NISAB_GRAMS = 87.48;
 export const SILVER_NISAB_GRAMS = 612.36;
 export const ZAKAT_RATE = 0.025;
+export const TOLA_TO_GRAMS = 11.664;
 
 export function calculatePersonalZakat(
   inputs: ZakatInputs,

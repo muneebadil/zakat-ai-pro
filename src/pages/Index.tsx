@@ -9,6 +9,7 @@ import {
   type ZakatInputs,
   type BusinessInputs,
   type ZakatResult,
+  TOLA_TO_GRAMS,
 } from "@/lib/zakat";
 import { fetchMetalPrices, fetchZakatExplanation } from "@/lib/gemini";
 import { useToast } from "@/hooks/use-toast";
@@ -35,23 +36,44 @@ const Index = () => {
   const [goldPrice, setGoldPrice] = useState(0);
   const [silverPrice, setSilverPrice] = useState(0);
   const [pricesLoading, setPricesLoading] = useState(true);
+  const [priceError, setPriceError] = useState(false);
   const [result, setResult] = useState<ZakatResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [explanation, setExplanation] = useState("");
   const [explanationLoading, setExplanationLoading] = useState(false);
 
+  // Unit toggles
+  const [goldUnit, setGoldUnit] = useState<"gram" | "tola">("gram");
+  const [silverUnit, setSilverUnit] = useState<"gram" | "tola">("gram");
+  // Display values (what the user types, could be grams or tola)
+  const [goldDisplay, setGoldDisplay] = useState(0);
+  const [silverDisplay, setSilverDisplay] = useState(0);
+
+  // Sync display value to internal grams
+  useEffect(() => {
+    const grams = goldUnit === "tola" ? goldDisplay * TOLA_TO_GRAMS : goldDisplay;
+    setPersonalInputs((prev) => ({ ...prev, goldGrams: grams }));
+  }, [goldDisplay, goldUnit]);
+
+  useEffect(() => {
+    const grams = silverUnit === "tola" ? silverDisplay * TOLA_TO_GRAMS : silverDisplay;
+    setPersonalInputs((prev) => ({ ...prev, silverGrams: grams }));
+  }, [silverDisplay, silverUnit]);
+
   // Fetch metal prices on mount
   useEffect(() => {
     setPricesLoading(true);
+    setPriceError(false);
     fetchMetalPrices()
       .then(({ gold, silver }) => {
         setGoldPrice(gold);
         setSilverPrice(silver);
       })
       .catch(() => {
+        setPriceError(true);
         toast({
           title: "Price Fetch Failed",
-          description: "Could not fetch metal prices. Please enter manually.",
+          description: "Unable to fetch live metal prices. Please refresh.",
           variant: "destructive",
         });
       })
@@ -67,14 +89,7 @@ const Index = () => {
   }, []);
 
   const handleCalculate = useCallback(() => {
-    if (goldPrice === 0 && silverPrice === 0 && !pricesLoading) {
-      toast({
-        title: "Metal Prices Required",
-        description: "Please wait for prices to load or enter gold/silver values.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (priceError) return;
 
     setCalculating(true);
     setExplanation("");
@@ -87,13 +102,17 @@ const Index = () => {
       setResult(res);
       setCalculating(false);
     }, 400);
-  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis, pricesLoading, toast]);
+  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis, priceError]);
 
   const handleReset = useCallback(() => {
     setPersonalInputs(defaultPersonal);
     setBusinessInputs(defaultBusiness);
     setResult(null);
     setExplanation("");
+    setGoldDisplay(0);
+    setSilverDisplay(0);
+    setGoldUnit("gram");
+    setSilverUnit("gram");
   }, []);
 
   const handleFetchExplanation = useCallback(async () => {
@@ -141,8 +160,15 @@ const Index = () => {
             onCalculate={handleCalculate}
             onReset={handleReset}
             calculating={calculating}
-            onGoldPriceChange={setGoldPrice}
-            onSilverPriceChange={setSilverPrice}
+            goldUnit={goldUnit}
+            silverUnit={silverUnit}
+            onGoldUnitChange={setGoldUnit}
+            onSilverUnitChange={setSilverUnit}
+            goldDisplay={goldDisplay}
+            silverDisplay={silverDisplay}
+            onGoldDisplayChange={setGoldDisplay}
+            onSilverDisplayChange={setSilverDisplay}
+            priceError={priceError}
           />
 
           <div className="space-y-6 lg:sticky lg:top-8">
