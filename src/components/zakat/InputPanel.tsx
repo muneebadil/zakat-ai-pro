@@ -1,6 +1,7 @@
 import GlassInput from "./GlassInput";
+import UnitToggle from "./UnitToggle";
 import type { ZakatInputs, BusinessInputs } from "@/lib/zakat";
-import { formatCurrency } from "@/lib/zakat";
+import { formatCurrency, TOLA_TO_GRAMS } from "@/lib/zakat";
 import { Loader2, RotateCcw } from "lucide-react";
 
 interface InputPanelProps {
@@ -18,8 +19,15 @@ interface InputPanelProps {
   onCalculate: () => void;
   onReset: () => void;
   calculating: boolean;
-  onGoldPriceChange: (v: number) => void;
-  onSilverPriceChange: (v: number) => void;
+  goldUnit: "gram" | "tola";
+  silverUnit: "gram" | "tola";
+  onGoldUnitChange: (u: "gram" | "tola") => void;
+  onSilverUnitChange: (u: "gram" | "tola") => void;
+  goldDisplay: number;
+  silverDisplay: number;
+  onGoldDisplayChange: (v: number) => void;
+  onSilverDisplayChange: (v: number) => void;
+  priceError: boolean;
 }
 
 const InputPanel = ({
@@ -36,10 +44,20 @@ const InputPanel = ({
   pricesLoading,
   onCalculate,
   onReset,
-  onGoldPriceChange,
-  onSilverPriceChange,
   calculating,
+  goldUnit,
+  silverUnit,
+  onGoldUnitChange,
+  onSilverUnitChange,
+  goldDisplay,
+  silverDisplay,
+  onGoldDisplayChange,
+  onSilverDisplayChange,
+  priceError,
 }: InputPanelProps) => {
+  const goldInGrams = goldUnit === "tola" ? goldDisplay * TOLA_TO_GRAMS : goldDisplay;
+  const silverInGrams = silverUnit === "tola" ? silverDisplay * TOLA_TO_GRAMS : silverDisplay;
+
   return (
     <div className="glass-card-glow p-6 sm:p-8 space-y-6">
       <h2 className="text-xl font-bold text-foreground">Zakat Inputs</h2>
@@ -76,25 +94,63 @@ const InputPanel = ({
           {/* Gold */}
           <div>
             <p className="section-label">🥇 Gold</p>
+            <div className="flex items-center justify-between mb-2">
+              <UnitToggle unit={goldUnit} onChange={onGoldUnitChange} />
+            </div>
             <GlassInput
-              label="Gold Weight"
-              value={personalInputs.goldGrams}
-              onChange={(v) => updatePersonal("goldGrams", v)}
-              suffix="grams"
-              info={pricesLoading ? "Fetching price..." : goldPrice > 0 ? `Current price: ${formatCurrency(goldPrice)}/gram` : "Price unavailable"}
+              label={`Gold Weight (${goldUnit === "gram" ? "grams" : "tola"})`}
+              value={goldDisplay}
+              onChange={onGoldDisplayChange}
+              suffix={goldUnit === "gram" ? "grams" : "tola"}
+              info={
+                pricesLoading
+                  ? "Fetching price..."
+                  : priceError
+                  ? "Price unavailable"
+                  : `Current Gold Price: Rs ${goldPrice.toFixed(2)} per gram`
+              }
             />
+            {goldUnit === "tola" && goldDisplay > 0 && (
+              <p className="text-xs text-primary/70 mt-1">
+                You entered {goldDisplay} tola = {goldInGrams.toFixed(2)} grams
+              </p>
+            )}
+            {goldUnit === "tola" && (
+              <p className="text-xs text-muted-foreground mt-1 italic">
+                Automatic conversion applied (1 tola = {TOLA_TO_GRAMS} grams)
+              </p>
+            )}
           </div>
 
           {/* Silver */}
           <div>
             <p className="section-label">🥈 Silver</p>
+            <div className="flex items-center justify-between mb-2">
+              <UnitToggle unit={silverUnit} onChange={onSilverUnitChange} />
+            </div>
             <GlassInput
-              label="Silver Weight"
-              value={personalInputs.silverGrams}
-              onChange={(v) => updatePersonal("silverGrams", v)}
-              suffix="grams"
-              info={pricesLoading ? "Fetching price..." : silverPrice > 0 ? `Current price: ${formatCurrency(silverPrice)}/gram` : "Price unavailable"}
+              label={`Silver Weight (${silverUnit === "gram" ? "grams" : "tola"})`}
+              value={silverDisplay}
+              onChange={onSilverDisplayChange}
+              suffix={silverUnit === "gram" ? "grams" : "tola"}
+              info={
+                pricesLoading
+                  ? "Fetching price..."
+                  : priceError
+                  ? "Price unavailable"
+                  : `Current Silver Price: Rs ${silverPrice.toFixed(2)} per gram`
+              }
             />
+            {silverUnit === "tola" && silverDisplay > 0 && (
+              <p className="text-xs text-primary/70 mt-1">
+                You entered {silverDisplay} tola = {silverInGrams.toFixed(2)} grams
+              </p>
+            )}
+            {silverUnit === "tola" && (
+              <p className="text-xs text-muted-foreground mt-1 italic">
+                Automatic conversion applied (1 tola = {TOLA_TO_GRAMS} grams)
+              </p>
+            )}
           </div>
 
           {/* Investments */}
@@ -148,42 +204,15 @@ const InputPanel = ({
         </div>
       )}
 
-      {/* Manual Price Override */}
-      <div className="space-y-3">
-        <p className="section-label">💲 Metal Prices (PKR/gram)</p>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground/80">Gold Price</label>
-            <input
-              type="number"
-              min={0}
-              value={goldPrice || ""}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                onGoldPriceChange(isNaN(val) || val < 0 ? 0 : val);
-              }}
-              placeholder="0"
-              className="glass-input"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground/80">Silver Price</label>
-            <input
-              type="number"
-              min={0}
-              value={silverPrice || ""}
-              onChange={(e) => {
-                const val = parseFloat(e.target.value);
-                onSilverPriceChange(isNaN(val) || val < 0 ? 0 : val);
-              }}
-              placeholder="0"
-              className="glass-input"
-            />
-          </div>
-        </div>
-        <p className="text-xs text-primary/70">
-          {pricesLoading ? "⏳ Fetching live prices..." : "✅ Prices loaded (you can override manually)"}
-        </p>
+      {/* Price Status */}
+      <div className="text-xs text-center">
+        {pricesLoading ? (
+          <span className="text-primary/70">⏳ Fetching live metal prices...</span>
+        ) : priceError ? (
+          <span className="text-destructive">❌ Unable to fetch live metal prices. Please refresh.</span>
+        ) : (
+          <span className="text-primary/70">✅ Live metal prices loaded from goldprice.org</span>
+        )}
       </div>
 
       {/* Nisab Basis */}
@@ -203,7 +232,7 @@ const InputPanel = ({
       <div className="flex gap-3 pt-2">
         <button
           onClick={onCalculate}
-          disabled={calculating || pricesLoading}
+          disabled={calculating || pricesLoading || priceError}
           className="btn-gradient flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {calculating ? (
