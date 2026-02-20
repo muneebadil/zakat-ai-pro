@@ -1,7 +1,12 @@
-const GEMINI_API_KEY = "AIzaSyDAfGuQGzef64xZP4YHJbRqDzD_dJqt7Lo";
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+const API_URL = GEMINI_API_KEY
+  ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+  : "";
 
 async function callGemini(prompt: string): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing VITE_GEMINI_API_KEY. Set it in your .env file.");
+  }
   const response = await fetch(API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
