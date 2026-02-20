@@ -24,66 +24,41 @@ export interface MetalPrices {
 }
 
 const TROY_OUNCE_IN_GRAMS = 31.1035;
+const GOLDPRICE_API_URL = "https://data-asg.goldprice.org/dbXRates/PKR";
+
+const CORS_PROXIES = [
+  () => "https://corsproxy.io/?" + encodeURIComponent(GOLDPRICE_API_URL),
+  () => "https://api.allorigins.win/raw?url=" + encodeURIComponent(GOLDPRICE_API_URL),
+];
 
 async function fetchFromGoldPriceOrg(): Promise<MetalPrices> {
-  const res = await fetch("https://data-asg.goldprice.org/dbXRates/PKR");
-  if (!res.ok) throw new Error("goldprice.org API failed");
-
-  const data = await res.json();
-  const item = data?.items?.[0];
-  if (!item || !item.xauPrice || !item.xagPrice) {
-    throw new Error("Invalid metal price data");
+  let lastError: Error | null = null;
+  for (const getUrl of CORS_PROXIES) {
+    try {
+      const url = getUrl();
+      const res = await fetch(url, { method: "GET", headers: { Accept: "application/json" } });
+      if (!res.ok) continue;
+      const raw = await res.text();
+      const data = JSON.parse(raw) as { items?: Array<{ xauPrice?: number; xagPrice?: number }> };
+      const item = data?.items?.[0];
+      if (!item || item.xauPrice == null || item.xagPrice == null) continue;
+      return {
+        gold: item.xauPrice / TROY_OUNCE_IN_GRAMS,
+        silver: item.xagPrice / TROY_OUNCE_IN_GRAMS,
+      };
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+    }
   }
-
-  return {
-    gold: item.xauPrice / TROY_OUNCE_IN_GRAMS,
-    silver: item.xagPrice / TROY_OUNCE_IN_GRAMS,
-  };
-}
-
-async function fetchFromExchangeRate(): Promise<MetalPrices> {
-  const rateRes = await fetch("https://api.exchangerate-api.com/v4/latest/USD");
-  if (!rateRes.ok) throw new Error("Exchange rate API failed");
-  const rateData = await rateRes.json();
-  const pkrRate = rateData.rates?.PKR;
-  if (!pkrRate) throw new Error("PKR rate not found");
-
-  // Approximate international spot prices per gram in USD
-  const goldUsdPerGram = 88;
-  const silverUsdPerGram = 1.05;
-
-  return {
-    gold: Math.round(goldUsdPerGram * pkrRate),
-    silver: Math.round(silverUsdPerGram * pkrRate),
-  };
+  throw lastError ?? new Error("goldprice.org API failed");
 }
 
 export async function fetchMetalPrices(): Promise<MetalPrices> {
-  // Strategy 1: goldprice.org (most accurate, per troy ounce in PKR)
-  try {
-    const prices = await fetchFromGoldPriceOrg();
-    if (prices.gold > 0 && prices.silver > 0) {
-      console.log("✅ Prices loaded from goldprice.org", prices);
-      return prices;
-    }
-  } catch (e) {
-    console.warn("goldprice.org failed, trying fallback...", e);
+  const prices = await fetchFromGoldPriceOrg();
+  if (prices.gold > 0 && prices.silver > 0) {
+    return prices;
   }
-
-  // Strategy 2: Exchange rate API + approximate spot prices
-  try {
-    const prices = await fetchFromExchangeRate();
-    if (prices.gold > 0 && prices.silver > 0) {
-      console.log("✅ Prices loaded from exchange rate fallback", prices);
-      return prices;
-    }
-  } catch (e) {
-    console.warn("Exchange rate fallback also failed", e);
-  }
-
-  // Strategy 3: Hardcoded fallback (approximate PKR per gram)
-  console.warn("Using hardcoded fallback prices");
-  return { gold: 43670, silver: 652 };
+  throw new Error("Invalid metal price data");
 }
 
 export async function fetchZakatExplanation(

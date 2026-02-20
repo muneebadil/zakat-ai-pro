@@ -36,6 +36,7 @@ const Index = () => {
   const [goldPrice, setGoldPrice] = useState(0);
   const [silverPrice, setSilverPrice] = useState(0);
   const [pricesLoading, setPricesLoading] = useState(true);
+  const [priceError, setPriceError] = useState(false);
   const [result, setResult] = useState<ZakatResult | null>(null);
   const [calculating, setCalculating] = useState(false);
   const [explanation, setExplanation] = useState("");
@@ -47,6 +48,8 @@ const Index = () => {
   // Display values (what the user types, could be grams or tola)
   const [goldDisplay, setGoldDisplay] = useState(0);
   const [silverDisplay, setSilverDisplay] = useState(0);
+  // Gold purity (karat)
+  const [goldKarat, setGoldKarat] = useState<24 | 22 | 21 | 18 | 14>(24);
 
   // Sync display value to internal grams
   useEffect(() => {
@@ -60,22 +63,31 @@ const Index = () => {
   }, [silverDisplay, silverUnit]);
 
   // Fetch metal prices on mount
-  useEffect(() => {
+  const fetchPrices = useCallback(() => {
     setPricesLoading(true);
+    setPriceError(false);
     fetchMetalPrices()
       .then(({ gold, silver }) => {
         setGoldPrice(gold);
         setSilverPrice(silver);
+        setPriceError(false);
       })
       .catch(() => {
+        setPriceError(true);
+        setGoldPrice(0);
+        setSilverPrice(0);
         toast({
           title: "Price Fetch Failed",
-          description: "Using approximate prices. You can refresh to retry.",
+          description: "Unable to fetch live metal prices. Please refresh.",
           variant: "destructive",
         });
       })
       .finally(() => setPricesLoading(false));
   }, []);
+
+  useEffect(() => {
+    fetchPrices();
+  }, [fetchPrices]);
 
   const updatePersonal = useCallback((key: keyof ZakatInputs, value: number) => {
     setPersonalInputs((prev) => ({ ...prev, [key]: value }));
@@ -92,12 +104,12 @@ const Index = () => {
     setTimeout(() => {
       const res =
         mode === "personal"
-          ? calculatePersonalZakat(personalInputs, goldPrice, silverPrice, nisabBasis)
+          ? calculatePersonalZakat(personalInputs, goldPrice, silverPrice, nisabBasis, goldKarat)
           : calculateBusinessZakat(businessInputs, goldPrice, silverPrice, nisabBasis);
       setResult(res);
       setCalculating(false);
     }, 400);
-  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis]);
+  }, [mode, personalInputs, businessInputs, goldPrice, silverPrice, nisabBasis, goldKarat]);
 
   const handleReset = useCallback(() => {
     setPersonalInputs(defaultPersonal);
@@ -108,6 +120,7 @@ const Index = () => {
     setSilverDisplay(0);
     setGoldUnit("gram");
     setSilverUnit("gram");
+    setGoldKarat(24);
   }, []);
 
   const handleFetchExplanation = useCallback(async () => {
@@ -163,7 +176,10 @@ const Index = () => {
             silverDisplay={silverDisplay}
             onGoldDisplayChange={setGoldDisplay}
             onSilverDisplayChange={setSilverDisplay}
-            priceError={false}
+            priceError={priceError}
+            onRetryPrices={fetchPrices}
+            goldKarat={goldKarat}
+            onGoldKaratChange={setGoldKarat}
           />
 
           <div className="space-y-6 lg:sticky lg:top-8">

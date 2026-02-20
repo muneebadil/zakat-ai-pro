@@ -28,6 +28,9 @@ interface InputPanelProps {
   onGoldDisplayChange: (v: number) => void;
   onSilverDisplayChange: (v: number) => void;
   priceError: boolean;
+  onRetryPrices?: () => void;
+  goldKarat: 24 | 22 | 21 | 18 | 14;
+  onGoldKaratChange: (k: 24 | 22 | 21 | 18 | 14) => void;
 }
 
 const InputPanel = ({
@@ -54,6 +57,9 @@ const InputPanel = ({
   onGoldDisplayChange,
   onSilverDisplayChange,
   priceError,
+  onRetryPrices,
+  goldKarat,
+  onGoldKaratChange,
 }: InputPanelProps) => {
   const goldInGrams = goldUnit === "tola" ? goldDisplay * TOLA_TO_GRAMS : goldDisplay;
   const silverInGrams = silverUnit === "tola" ? silverDisplay * TOLA_TO_GRAMS : silverDisplay;
@@ -120,6 +126,26 @@ const InputPanel = ({
                 Automatic conversion applied (1 tola = {TOLA_TO_GRAMS} grams)
               </p>
             )}
+            {/* Gold Purity Dropdown */}
+            <div className="mt-3 space-y-2">
+              <label className="text-sm font-medium text-foreground/80">Gold Purity (Karat)</label>
+              <select
+                value={goldKarat}
+                onChange={(e) => onGoldKaratChange(Number(e.target.value) as 24 | 22 | 21 | 18 | 14)}
+                className="glass-input cursor-pointer w-full"
+              >
+                <option value={24}>24K (100%)</option>
+                <option value={22}>22K (91.67%)</option>
+                <option value={21}>21K (87.5%)</option>
+                <option value={18}>18K (75%)</option>
+                <option value={14}>14K (58.33%)</option>
+              </select>
+              {goldKarat !== 24 && (
+                <p className="text-xs text-primary/70 mt-1">
+                  {goldKarat}K gold contains {((goldKarat / 24) * 100).toFixed(2)}% pure gold.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Silver */}
@@ -205,11 +231,22 @@ const InputPanel = ({
       )}
 
       {/* Price Status */}
-      <div className="text-xs text-center">
+      <div className="text-xs text-center space-y-1">
         {pricesLoading ? (
           <span className="text-primary/70">⏳ Fetching live metal prices...</span>
         ) : priceError ? (
-          <span className="text-destructive">❌ Unable to fetch live metal prices. Please refresh.</span>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-destructive">❌ Unable to fetch live metal prices. Please refresh.</span>
+            {onRetryPrices && (
+              <button
+                type="button"
+                onClick={onRetryPrices}
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                Retry
+              </button>
+            )}
+          </div>
         ) : (
           <span className="text-primary/70">✅ Live metal prices loaded from goldprice.org</span>
         )}

@@ -50,9 +50,12 @@ export function calculatePersonalZakat(
   inputs: ZakatInputs,
   goldPrice: number,
   silverPrice: number,
-  nisabBasis: "gold" | "silver"
+  nisabBasis: "gold" | "silver",
+  goldKarat: 24 | 22 | 21 | 18 | 14 = 24
 ): ZakatResult {
-  const goldValue = inputs.goldGrams * goldPrice;
+  // Apply purity factor: karat / 24 (goldPrice is already 24K price per gram)
+  const purityFactor = goldKarat / 24;
+  const goldValue = inputs.goldGrams * goldPrice * purityFactor;
   const silverValue = inputs.silverGrams * silverPrice;
 
   const totalAssets =
